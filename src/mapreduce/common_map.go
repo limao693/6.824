@@ -1,7 +1,12 @@
 package mapreduce
 
 import (
+	"container/list"
+	"encoding/json"
+	"fmt"
 	"hash/fnv"
+	"io/ioutil"
+	"os"
 )
 
 func doMap(
@@ -53,6 +58,43 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+	contents, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		fmt.Printf("doMap function, unable read file:%s, %s \n", inFile, err)
+	}
+
+	//store file name and keyValue
+	intermediaMap := make(map[string]*list.List)
+
+	//Used mapF, get all k-v in file
+	kvs := mapF(inFile, string(contents))
+
+	//hash(k-v)==reduce id
+	for _, kv :=range kvs {
+		reduceTaskNum := ihash(kv.Key) % nReduce
+		inetmdeiaFileName := reduceName(jobName, mapTask, reduceTaskNum)
+		if currentList, ok := intermediaMap[inetmdeiaFileName]; ok {
+			currentList.PushBack(kv)
+		} else {
+			currentList := list.New()
+			currentList.PushBack(kv)
+			intermediaMap[inetmdeiaFileName] = currentList
+		}
+	}
+
+	//write intermediaMap to distrubite file
+	for fileName, kvList := range intermediaMap {
+		file, err := os.OpenFile(fileName, os.O_CREATE |os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Printf("doMap create or write intermediaMap to %s error: %s", fileName, err)
+		}
+
+		encoder := json.NewEncoder(file)
+		for element := kvList.Front(); element != nil; element = element.Next() {
+			encoder.Encode(element.Value)
+		}
+		file.Close()
+	}
 }
 
 func ihash(s string) int {
