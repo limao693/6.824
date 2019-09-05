@@ -47,6 +47,7 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	go func() {
 		for n:= 0; n < ntasks; n++ {
 			go func(taskNumber int) {
+				// add infinte loop, until finished task.
 				for {
 					w := <- taskChan
 					file := mapFiles[taskNumber % len(mapFiles)]
